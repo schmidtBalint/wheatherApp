@@ -2,6 +2,7 @@ package com.example.jetpackcompose.ui.views
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,6 +46,7 @@ fun ForecastWeatherView(forecast: List<ForecastItem>) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
+        // Search bar for entering city name
         SearchBarSample(
             selectedMenu = "Forecast",
             apiKey = apiKey,
@@ -61,6 +63,7 @@ fun ForecastWeatherView(forecast: List<ForecastItem>) {
         )
     }
 
+    // Display error message if any
     errorMessage?.let {
         Text(
             text = it,
@@ -82,6 +85,7 @@ fun ForecastWeatherView(forecast: List<ForecastItem>) {
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Display message if hometown is not set
         if (searchQuery.value.isEmpty() && hometown.isEmpty()) {
             Text(
                 text = "Set your hometown in settings",
@@ -92,6 +96,7 @@ fun ForecastWeatherView(forecast: List<ForecastItem>) {
                 modifier = Modifier.padding(16.dp)
             )
         } else if (forecast.isNotEmpty()) {
+            // Display forecast data
             Text(
                 text = "Forecast for ${searchQuery.value.takeIf { it.isNotEmpty() } ?: hometown}",
                 style = MaterialTheme.typography.headlineLarge.copy(
@@ -103,29 +108,27 @@ fun ForecastWeatherView(forecast: List<ForecastItem>) {
                     .align(Alignment.CenterHorizontally)
             )
 
-            // Display forecast data
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ////////////////////////////////////
-
-                //TODO Zeige die Wettervorhersage in dieser Liste an (nutze die WeatherCard Komponente)
-                // Der Text unten darf entfernt werden.
-
-                ////////////////////////////////////
+                items(forecast) { forecastItem ->
+                    WeatherCard(forecastItem = forecastItem)
+                }
             }
-
         }
 
-        Text(
-            text = "TODO: Implement me :)",
-            style = MaterialTheme.typography.headlineLarge.copy(
-                fontSize = 18.sp,
-                color = Color.Black
-            ),
-            modifier = Modifier
-                .padding(bottom = 32.dp)
-                .align(Alignment.CenterHorizontally)
-        )
+        // Display loading message if forecast data is empty and no error
+        if (forecast.isEmpty() && errorMessage == null) {
+            Text(
+                text = "Loading forecast...",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontSize = 18.sp,
+                    color = Color.Gray
+                ),
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+        }
     }
 }

@@ -19,12 +19,14 @@ import kotlinx.coroutines.flow.map
 
 class PopupService : Service() {
 
+    // Handler to manage delayed tasks on the main thread
     private val handler = Handler(Looper.getMainLooper())
     private var delayMillis: Long = -1L
     private var i = 0
     private val dataStore by lazy { applicationContext.dataStore }
     private var isNotificationEnabled: Boolean = false
 
+    // BroadcastReceiver to handle updates to the timer option
     private val updateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val newTimerOption = intent?.getStringExtra("timer_option") ?: "Deactivated"
@@ -35,15 +37,7 @@ class PopupService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-
-
-        ////////////////////////////////////
-
-        //TODO starte den Service hier
-
-        ////////////////////////////////////
-
-
+        startForegroundService()
         registerUpdateReceiver()
         initializeTimerFromSettings()
     }
@@ -64,6 +58,7 @@ class PopupService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // Runnable to show notifications at specified intervals
     private val showNotificationRunnable = object : Runnable {
         override fun run() {
             if (isNotificationEnabled) {
@@ -74,6 +69,7 @@ class PopupService : Service() {
         }
     }
 
+    // Update the timer option and manage the notification schedule
     private fun updateTimerOption(option: String) {
         delayMillis = timerOptionToMillis(option)
         isNotificationEnabled = delayMillis != -1L
@@ -86,6 +82,7 @@ class PopupService : Service() {
         }
     }
 
+    // Fetch the timer option from DataStore settings
     private suspend fun fetchTimerOptionFromSettings(): String {
         val key = stringPreferencesKey("timer_option_key")
         val timerOption = dataStore.data.map { preferences ->
@@ -95,6 +92,7 @@ class PopupService : Service() {
         return timerOption
     }
 
+    // Register the BroadcastReceiver for timer updates
     private fun registerUpdateReceiver() {
         ContextCompat.registerReceiver(
             this,
@@ -104,7 +102,7 @@ class PopupService : Service() {
         )
     }
 
-
+    // Convert timer option string to milliseconds
     private fun timerOptionToMillis(option: String): Long {
         return when (option) {
             "10s" -> 10_000L
@@ -116,19 +114,22 @@ class PopupService : Service() {
         }
     }
 
+    // Initialize the timer settings from DataStore
     private fun initializeTimerFromSettings() {
         CoroutineScope(Dispatchers.IO).launch {
             val timerOption = fetchTimerOptionFromSettings()
             delayMillis = timerOptionToMillis(timerOption)
+            isNotificationEnabled = delayMillis != -1L
 
-            if (delayMillis != -1L) {
-                isNotificationEnabled = true
+            if (isNotificationEnabled) {
                 handler.post(showNotificationRunnable)
+            } else {
+                stopSelf()
             }
         }
     }
 
-
+    // Send a notification with the specified message
     private fun sendNotification(message: String) {
         if (ActivityCompat.checkSelfPermission(
                 this@PopupService,
@@ -143,6 +144,7 @@ class PopupService : Service() {
         notificationManager.notify(1, notification)
     }
 
+    // Create a notification with the specified content text
     private fun getNotification(contentText: String): Notification {
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -163,6 +165,7 @@ class PopupService : Service() {
             .build()
     }
 
+    // Create a notification channel for the service
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -179,5 +182,11 @@ class PopupService : Service() {
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
+    }
+
+    // Start the service in the foreground with an initial notification
+    private fun startForegroundService() {
+        val notification = getNotification("Hello World")
+        startForeground(1, notification)
     }
 }
